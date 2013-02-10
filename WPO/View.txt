@@ -1,0 +1,75 @@
+From a view perspective $this->render('something') would refer to the view 
+of the deeper taxonomy level (for example if in _section_ view, 
+$this->render(something) would refer to the option with the name "something").
+Thus outputing the rendering of the option, inside the section.
+
+Inside a Page View:
+From a page view (
+	P1(S01V01) AdminPages/PageFolder/view.phtml (if there is a section called view, there must be a view folder (avoids conflict))
+	P0(S01V01) AdminPages/view.phtml 
+one can call $this->render(nameOfSection) only if there is a section folder with section views (c.f.: 2.).
+$this->getSections() would return all sections. $this->sectionName woul return the section's
+options (All default options values for that section). To get a specific option, 
+$this->sectionName->optionName->data would return that option's data array. Thereafter it would
+be fairly simple to loop over that options data like this:
+foreach ($this->sectionName->optionName->data as $k) {
+	$k->value
+	$k->otherDataKey
+	//etc.
+}
+in fact under the hood, these members are a simple array converted to an object to avoid
+array key brackets and stuff. So from the page perspective, you could loop through all 
+sections, then loop over each option, and over each option's data.
+
+Inside a Section View:
+From a section view (
+	P1S1(V01) AdminPages/PageFolder/SectionFolder/view.phtml (if there is an option called "view", there must be a view folder (avoids conflict))
+	P1S0(V01) AdminPages/PageFolder/section__sectionName.phtml
+	P0S0V0 AdminPages/section__sectionName.phtml (only one page, the default one)
+	
+(O|S|P)NamedView(1|0) : Option|Section|Page Named view 1 or 0 (yes or no)
+   (O|S)SameName(1|0) : Option|Section with Same name across lower taxonomy levels (Pages can never have the same name, because there is no lower taxonomy level)
+(S|P)MoreThanOne(1|0) : Section|Page more than one allowed (options can always be countless)
+   
+    FullStd P1S1V1  -   |  -      |  -       | -
+			 | | ^ AdminPages/PageFolder/SectionFolder/view/optionName.phtml
+			 | ^   AdminPages/PageFolder/SectionFolder/view.phtml
+			 ^     AdminPages/PageFolder/view.phtml
+		   			
+    ONv0Std P1S1V0 ONv0 |  -      |  -       | -
+			 | | ^ AdminPages/PageFolder/SectionFolder/optionName.phtml
+			 | ^   AdminPages/PageFolder/SectionFolder/view.phtml
+			 ^     AdminPages/PageFolder/view.phtml
+				   				     
+   ONv0Page P1S0V0 ONv0 | SM0     | OSn0     | SectionLevel,PageLevel
+			 | | ^ AdminPages/PageFolder/optionName.phtml      
+			 | ^   AdminPages/PageFolder/section__sectionName.phtml
+			 ^     AdminPages/PageFolder/view.phtml
+
+   FullPage P1S0V0  -   | SM0     | OSn0,    | SectionLevel,PageLevel
+			 | | ^ AdminPages/PageFolder/optionName.phtml
+			 | ^   AdminPages/PageFolder/section__sectionName.phtml
+			 ^     AdminPages/PageFolder/page__view.phtml                                           : view can be the name of the page (containing folder)
+		    
+   FullFlat P0S0V0  -   |  -      |  -       | PageLevel
+			 | | ^ AdminPages/option__pageName__sectionName__optionName.phtml
+			 | ^   AdminPages/section__pageName__sectionName.phtml
+			 ^     AdminPages/page__pageName.phtml
+		    
+  WeirdFlat P0S0V0  -   | PM0     | SSn0     | (SectionLevel) PageLevel
+			 | | ^ AdminPages/sectionName__optionName.phtml
+			 | ^   AdminPages/section__sectionName.phtml
+			 ^     AdminPages/page__pageName.phtml
+		           
+   UglyFlat P0S0V0  -   | (P|S)M0 | (O|S)Sn0 | PageLevel
+			 | | ^ AdminPages/optionName.phtml
+			 | ^   AdminPages/section__sectionName.phtml
+			 ^     AdminPages/page__pageName.phtml
+		 
+Options files:
+
+ * Options files:
+ *    OptionTaxonomy  AdminPages/PageFolder/SectionFolder/optionName.php array(info...)
+ *    SectionTaxonomy AdminPages/PageFolder/SectionFolder/options.php    array(options...)
+ *    PageTaxonomy    AdminPages/PageFolder/options.php                  array(section=>array(options...), section=>array(options....))
+ *    NoFileTaxonomy  AdminPages/options.php                             array(page=>array(section=>array(options...), section=>array(options....)), page=>array(section=>array(options...), section=>array(options....)))
