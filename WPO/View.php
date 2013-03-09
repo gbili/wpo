@@ -2,7 +2,6 @@
 namespace WPO;
 
 require_once WPO_DIR . '/View/ND/Loader/Views.php';
-require_once WPO_DIR . '/View/AbstractTaxonomy.php';
 
 use WPO\View\ND\Normalizer\Views as ViewsNormalizer;
 
@@ -44,14 +43,5 @@ class View
         */
         require_once WPO_DIR . '/View/Taxonomy/Page.php';
         new \WPO\View\Taxonomy\Page($this->_plugin, $this->_page);
-    }
-    
-    /**
-
-     * 
-     */
-    private function _render()
-    {   
-
     }
 }

@@ -112,7 +112,7 @@ class Loader
         }
         if (null !== $key) {
             if (!isset($this->_dataArray[$key])) {
-                throw new \Exception("The key = $key is not set in \$this->_dataArray");
+                throw new \Exception("The key:$key is not set in \$this->_dataArray");
             }
             return $this->_dataArray[$key];
         }

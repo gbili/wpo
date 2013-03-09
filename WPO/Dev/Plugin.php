@@ -91,9 +91,11 @@ extends \WPO\Plugin
         /*
          * -------------- Code below here is executed only once ------------------------
          */
-        define('WPO_DIR', realpath(__DIR__ . '/..'));//only defined once ^
-        define('WPO_PARENT_DIR', realpath(WPO_DIR . '/..'));
-    
+        if (!defined('WPO_DIR')) {
+            define('WPO_DIR', realpath(__DIR__ . '/..'));//only defined once ^
+            define('WPO_PARENT_DIR', realpath(WPO_DIR . '/..'));//both are defined sequentially so no need for double test
+        }
+        
         /*
          * Either way we have the identifier now.
         */
@@ -111,12 +113,12 @@ extends \WPO\Plugin
         if (isset($customizeArray[parent::K_DEFAULT_PAGE_NAME])) {
             $this->setDefaultPageName($customizeArray[parent::K_DEFAULT_PAGE_NAME]);
         } else {
-            $this->setDefaultPageName(parent::K_DEFAULT_PAGE_NAME);
+            $this->setDefaultPageName(parent::DEFAULT_PAGE_NAME);
         }
         if (isset($customizeArray[parent::K_DEFAULT_SECTION_NAME])) {
             $this->setDefaultSectionName($customizeArray[parent::K_DEFAULT_SECTION_NAME]);
         } else {
-            $this->setDefaultSectionName(parent::K_DEFAULT_SECTION_NAME);
+            $this->setDefaultSectionName(parent::DEFAULT_SECTION_NAME);
         }
         /*
          * All plugin values are now set even if not installed
@@ -141,7 +143,7 @@ extends \WPO\Plugin
      *
      * @return \WPO\Option\NormalizedData\Defaults
      */
-    public function getOptionDefaultsNormalizedData()
+    public function getOptionDefaultsND()
     {
         if (null === $this->_optionDefaultsND) {
             require_once __DIR__ . '/Option/NormalizedData/Defaults.php';

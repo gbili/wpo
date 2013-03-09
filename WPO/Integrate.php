@@ -19,7 +19,7 @@ require_once __DIR__ . '/Dispatcher.php';
  *
  */
 class Integrate
-{   
+{
     /**
      * DBR_... identifies the row name
      * of some data set in db options.
@@ -143,7 +143,8 @@ class Integrate
         require_once WPO_DIR . '/Installer.php';
         $installer = new \WPO\Installer($pluginToInstall);
         $installer->install();
-        $this->_saveMeta();//save meta to db
+        
+        $this->saveMeta();//save meta to db
         $this->_reloadMeta();//meta is in tempMeta, swap it to meta
         $this->_init();
     }
@@ -169,7 +170,7 @@ class Integrate
      * @return boolean 
      */
     public function isUpToDate()
-    {
+    {   
         return $this->isInstalled() && !isset($this->_tempMeta[self::DBK_META_PLUGINVERSION]);
     }
     
@@ -185,6 +186,7 @@ class Integrate
         $this->_plugin = \WPO\Plugin::getInstance($this->_pluginIdentifier);
         /*
          * allow for theme or plugin specific function calls
+         * depends on what did the user instantiate a WPO\Plugin() or a WPO\Theme()
          */
         $this->_isTheme = (false !== strpos(get_class($this->_plugin), 'Theme'));
         /*
@@ -215,15 +217,16 @@ class Integrate
      */
     public function addPagesToAdminMenu()
     {
+        //avoid namespace conflicts
         $wpfunction = ($this->_isTheme)? '\\add_theme_page' : '\\add_options_page';
-        foreach ($this->_plugin->getOptionValuesNormalizedData()->getOptions() as $page => $sections) {
+        foreach ($this->_plugin->getOptionValuesND()->getOptions() as $page => $sections) {
             $options = current($sections);
             $info    = current($options);
             $wpfunction(
                 $info[Option::PAGE_TITLE] . self::$_appendToPageTitle, //page title
                 $info[Option::PAGE_TITLE],                             //page title in menu
                 self::CAPABILITY_EDITTHEMEOPTIONS,                     //capability to view page
-                $page,                                                 //slug in menu
+                \WPO\Dispatcher::getPageSlug($this->_pluginIdentifier, $page),                                                 //slug in menu
                 \WPO\Dispatcher::getRenderCallback($this->_pluginIdentifier, $page) //function wp must call for rendering
             );
         }
@@ -236,7 +239,7 @@ class Integrate
      */
     public function registerOptions()
     {
-        foreach ($this->_plugin->getOptionValuesNormalizedData()->getOptions() as $page => $sections) {
+        foreach ($this->_plugin->getOptionValuesND()->getOptions() as $page => $sections) {
             \register_setting(
                 $this->getPageOptionsGroup($page),         //options group
                 $this->getPageOptionsDbKey($page),
@@ -248,14 +251,14 @@ class Integrate
                     $section,                     //section unique identifier
                     $info[Option::SECTION_TITLE], //section's title
                     '__return_false',             //no section callback
-                    $page                         //menu slug used to uniquely identify page
+                    \WPO\Dispatcher::getPageSlug($this->_pluginIdentifier, $page)                         //menu slug used to uniquely identify page
                 );
                 foreach ($options as $option => $info) {
                    \add_settings_field(
                         $option, //unique identifier for the field
                         __( $info[Option::TITLE], $this->_pluginIdentifier), //settings field label
                         \WPO\Dispatcher::getRenderCallback($this->_pluginIdentifier, $page),//function to render the section
-                        $page, //menu slug used to uniquely identify page
+                        \WPO\Dispatcher::getPageSlug($this->_pluginIdentifier, $page), //menu slug used to uniquely identify page
                         $section //settings section, same as the first argument in add_settings_section
                     );
                 }
@@ -330,7 +333,7 @@ class Integrate
         $this->_tempMeta[$key] = $value;
         
         if (true === $now) {
-            $this->_saveMeta();
+            $this->saveMeta();
         }
     }
     
@@ -359,8 +362,8 @@ class Integrate
     }
     
     /**
-     * Get the meta from database or if already
-     * fetched, get the value from meta member
+     * Get meta either from already set meta (comming from db) : $this->_meta
+     * or from the not already saved meta : $this->_tempMeta
      * 
      * @param unknown_type $key
      * @return multitype:
@@ -382,9 +385,20 @@ class Integrate
     }
     
     /**
+     * Checks the meta and temp meta
+     * 
+     * @param unknown_type $key
+     */
+    public function hasMeta($key = null)
+    {
+        $allMeta = array_merge($this->_meta, $this->_tempMeta);
+        return (null === $key)? empty($allMeta) : isset($allMeta[$key]);
+    }
+    
+    /**
      * Save meta to wordpress db
      */
-    private function _saveMeta()
+    public function saveMeta()
     {
         if (empty($this->_tempMeta)) {
             return;
@@ -398,6 +412,6 @@ class Integrate
      */
     public function __destruct()
     {
-        $this->_saveMeta();
+        $this->saveMeta();
     }
 }

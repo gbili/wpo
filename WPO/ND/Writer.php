@@ -2,7 +2,6 @@
 namespace WPO\ND;
 
 require_once __DIR__ . '/Loader.php';//constants
-require_once WPO_DIR . '/WriteOnce.php';
 
 
 /**
@@ -42,6 +41,13 @@ class Writer
     private $_normalizer;
     
     /**
+     * Has _normalize() been called?
+     * 
+     * @var unknown_type
+     */
+    private $_isNormalized = false;
+    
+    /**
      * 
      * @var boolean
      */
@@ -78,16 +84,17 @@ class Writer
 
     
     /**
-     * Returns the data array
+     * Returns the data array that the map has set 
      * 
      * @throws Exception
      */
     public function getArray()
     {
-        if (false === $this->_isWritten) {
-            throw new \Exception('The data has to be written before you can get its contents');
+        //try to normalized but if no normalizer is registered, then it will not normalize, and return
+        if (!$this->isNormalized()) {
+            $this->_normalize();
         }
-        return $this->getLoader()->getArray();
+        return $this->_dataArray;
     }
     
     /**
@@ -156,11 +163,9 @@ class Writer
     /**
      * Set whole data array at once as one of the tree taxonomies data
      * 
-     * @param unknown_type $node
-     * @param unknown_type $page
-     * @param unknown_type $section
-     * @param unknown_type $option
-     * @throws \WPO\Map\Test\Exception
+     * @param const $to taxonomy
+     * @param array $data option info
+     * @throws \Exception
      */
     public function setTo($to, $data)
     {
@@ -191,6 +196,24 @@ class Writer
                 throw new \Exception('Choose among ND\Loader constants for the second parameter');
                 break;
         }
+    }
+    
+    public function getOptions()
+    {
+        $a = $this->getArray();
+        return $a[\WPO\ND\Loader::OPTIONS];
+    }
+    
+    public function getSections()
+    {
+        $a = $this->getArray();
+        return $a[\WPO\ND\Loader::SECTIONS];
+    }
+    
+    public function getPages()
+    {
+        $a = $this->getArray();
+        return $a[\WPO\ND\Loader::PAGES];
     }
     
     /**
@@ -259,6 +282,28 @@ class Writer
     }
     
     /**
+     * Use the registered normalizer (if any) to perfect the array
+     */
+    private function _normalize()
+    {
+        if (null ==! $this->_normalizer) {//allow normalization
+            $this->_dataArray = $this->_normalizer->normalize($this->_dataArray);
+            $this->_isNormalized = true;
+        }
+    }
+    
+    /**
+     * Has _normalize() been called for the current dataArray?
+     * reset to false when new data is passed to writeFile($data)
+     * 
+     * @return boolean
+     */
+    public function isNormalized()
+    {
+        return $this->_isNormalized;
+    }
+    
+    /**
      * Save the data array to a file this will avoid loading maps and
      * all the scattered option files every time.
      * 
@@ -268,13 +313,11 @@ class Writer
     {
         if (!empty($data)) {
             $this->_dataArray = $data;
+            $this->_isNormalized = false;
         } else if (empty($this->_dataArray)) {
             throw new \Exception('Some data has to be passed for writing. use set(data, page[, section[, option]]) or pass a not empty data argument.');
         }
-        
-        if (null ==! $this->_normalizer) {//allow normalization
-            $this->_dataArray = $this->_normalizer->normalize($this->_dataArray);
-        }
+        $this->_normalize();
         
         $fileContents = "<?php\nreturn " . var_export($this->_dataArray, true) . ';';
         if (false === file_put_contents($this->getLoader()->getArrayFilePath(), $fileContents)) {

@@ -14,6 +14,7 @@ require_once WPO_DIR . '/View/Map/Test/View.php';
 require_once WPO_DIR . '/Option/ND/Normalizer/Defaults.php';
 require_once WPO_DIR . '/Option/ND/Normalizer/Values.php';
 require_once WPO_DIR . '/View/ND/Normalizer/Views.php';
+require_once WPO_DIR . '/Installer.php';//using method: createIntermediateDirectories()
 
 use WPO\Option\Map\Test\Option                        as OptionTest,
     WPO\View\Map\Test\View                            as ViewTest,
@@ -32,12 +33,20 @@ use WPO\Option\Map\Test\Option                        as OptionTest,
 class ViewsGenerator
 {
     /**
+     * Where are templates stored relative to wpo dir?
+     * means : true === is_dir(WPO_DIR . VIEW_TEMPLATES_DIR_WPORELATIVE)
+     * @var unknown_type
+     */
+    const VIEW_TEMPLATES_DIR_WPORELATIVE = '/prepacked/templates/view';
+    
+    /**
      *
      * @var WPO\Plugin
      */
     private $_plugin;
     
     private $_viewMap;
+    private $_viewMapBaseClassName;
     
     private $_overwrite;
     
@@ -53,28 +62,39 @@ class ViewsGenerator
     }
     
     /**
-     * 
+     * This will generate all the view files
+     * @todo ???description is wrong? only view files? I see normalized options
      * @param unknown_type $overwrite
      */
     public function generateViews($viewMapBaseClassName, $overwrite = false)
     {
         $this->_overwrite = $overwrite;
+        $this->_viewMapBaseClassName = $viewMapBaseClassName;
+
         /*
-         * Look for all files 
+         * Depr//Test and write a normalized Defaults options array!
+         * We have to get the options map to generate compatible views
+         * 
          */
-        $adminPagesPath = $this->_plugin->getAdminPagesPath();
-        $otest = new \WPO\Option\Map\Test\Option($adminPagesPath);//go through file system
-        $omap = $otest->findMap();//used later to see if views map is compatible with this options map
+        $otest = new \WPO\Option\Map\Test\Option($this->_plugin->getAdminPagesPath());
+        //maybe the test has been done elswere and we can use that result
+        if(!$otest->isAlreadyTested()) {
+            $otest->findMap();
+        }
+        $omap = $otest->getMap();//used later to see if views map is compatible with this options map
         //get the loaded data (from the ND\Writer)
         $nDWriter = $omap->getNDWriter();//the maps uses an WPO\ND\Writer to store the loaded user data
         //normalize
-        $nDWriter->setPlugin($this->_plugin);
+        /*$nDWriter->setPlugin($this->_plugin);
         $nDWriter->registerNormalizer('\\WPO\\Option\\ND\\Normalizer\\Defaults');
-        $nDWriter->writeFile();
+        $nDWriter->writeFile();*/
         //we will use the writer internal loader later
         
         /*
-         * Make sure the passed view map exists and it's a subclass of AbstractMap
+         * === Views
+         * Make sure the param $viewMapBaseClassName exists and it's a subclass of AbstractMap
+         * For that we create a maps iterator of the view type, and see if there is some file
+         * containing the class with base name $viewMapBaseClassName
          */
         require_once WPO_DIR . '/Map/Test/MapFilesIterator.php';
         $mapsIterator = new \WPO\Map\Test\MapFilesIterator(WPO_DIR . '/View/Map');
@@ -92,6 +112,11 @@ class ViewsGenerator
             );
         }
         
+        /*
+         * Load view map class file, create an instance and check type
+         * Then make sure that the view map is compatible with the already
+         * used options map
+         */
         require_once $mapFile->getPathname();
         $viewMapClassName = '\\WPO\\View\\Map\\' . $viewMapBaseClassName;
         $this->_viewMap = new $viewMapClassName();
@@ -116,41 +141,28 @@ class ViewsGenerator
          */
         //generate view files from options
         require_once WPO_DIR . '/Map/AbstractMap.php';
-        $this->_recursivelyCreateViewFiles($nDWriter->getLoader()->getOptions(), \WPO\Map\AbstractMap::getOrderedTaxonomies());
-        
-        /*
-         * Test our mapping and save the array
-         * @todo do not overwrite the views normalized array on install
-         */
-        //view paths and taxonomy
-        $vtest = new ViewTest($this->_plugin->getAdminPagesPath());//go through file system 
-        $vmap = $vtest->findMap();
-        $vNDWriter = $vmap->getNDWriter();
-        $vNDWriter->setPlugin($this->_plugin);
-        //at which level are views defined (one per option, one per section, one per page?)
-        $vNDWriter->registerNormalizer('\\WPO\\View\\ND\\Normalizer\\Views', $vmap->getHighestFileTaxonomy());
-        $vNDWriter->writeFile();
+        $this->_recursivelyCreateViewFiles($omap->getNDWriter()->getOptions(), \WPO\Map\AbstractMap::getOrderedTaxonomies());
     }
     
     /**
      * Loop through options to generate the view files names
      * Some view maps may not support some taxonomy level of view files
      *
-     * @param array $options
+     * @param array $data options array
      * @param array $taxonomies
      * @param array $keys
      */
-    protected function _recursivelyCreateViewFiles(array $options, array $taxonomies, array $keys = array())
-    {
+    protected function _recursivelyCreateViewFiles(array $data, array $taxonomies, array $keys = array())
+    {   
         //go one level deeper
         $taxonomy = array_shift($taxonomies);
-        foreach ($options as $key => $values) {//closer to leaf...
+        foreach ($data as $key => $values) {//closer to leaf...
             //keys need to be stacked, we pass then to getPath
             $keys[$taxonomy] = $key;
             if ($path = $this->_plugin->getAdminPagesPath() . $this->_viewMap->getPath($keys)) {
-                $this->createIntermediteDirectories($path);
+                \WPO\Installer::createIntermediteDirectories($path);
                 if (!file_exists($path) || true === $this->_overwrite) {
-                    file_put_contents($path, "");//write an empty file
+                    file_put_contents($path, $this->_getViewFileContents($taxonomy));
                 }
             }
             if (count($taxonomies) > 0) {
@@ -160,25 +172,22 @@ class ViewsGenerator
     }
     
     /**
-     * Mkdir -p
-     * @param string $path
+     * 
+     * @param string $viewMapViewTempaltesDir where are the maps view templates stored
+     * @param string $taxonomy what is the taxonomy level of the view? option, page or section
      */
-    public function createIntermediteDirectories($path)
+    private function _getViewFileContents($taxonomy)
     {
-        $pathParts = explode('/', $path);
-        //does the path point to a file? ..because we only want to create the directories
-        //does the part contain a "name.something" (name dot something)
-        if (1 < count($ptParts = preg_split('#\\.#', end($pathParts))) && '' !== current($ptParts)) {//dont pop hidden folders
-            array_pop($pathParts);
+        $viewMapViewTempaltesDir = WPO_DIR . self::VIEW_TEMPLATES_DIR_WPORELATIVE . '/'. $this->_viewMapBaseClassName;
+        if (!is_dir($viewMapViewTempaltesDir)) {
+            return '';//there are no default templates for this map type
         }
-        
-        $path = implode('/', $pathParts);
-        if (!file_exists($path)) {
-            mkdir($path, 0777, true);//true == -p
+        $viewTemplate = $viewMapViewTempaltesDir . '/' . strtolower($taxonomy) . '.' . \WPO\Plugin::VIEW_SUFFIX;
+        //@todo when the taxonomy is options, then we have to allow for further refinement of the view template
+        //for example when the option wants tu use a multicheck, load path/option_multicheck.phtml
+        if (!file_exists($viewTemplate)) {
+            throw new \Exception("Your map does not seem to have a view template for taxonomy: $taxonomy, create one as $viewTemplate");
         }
-        
-        if (!file_exists($path)) {
-            trigger_error('folder not created',E_NOTICE);
-        }
+        return file_get_contents($viewTemplate);
     }
 }

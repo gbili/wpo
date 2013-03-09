@@ -43,6 +43,10 @@ class Plugin
     const DEFAULT_SECTION_NAME    = 'General';
     const DEFAULT_PAGE_NAME       = 'Options';
     
+    /**
+     * Keys used in customize array on construction
+     * @var unknown_type
+     */
     const K_ADMIN_PAGES_DIRNAME   = 'adminPagesDirName';
     const K_DEFAULT_SECTION_NAME  = 'defaultSectionName';
     const K_DEFAULT_PAGE_NAME     = 'defaultPageName';
@@ -50,19 +54,19 @@ class Plugin
     
     /**
      * 
-     * @var WPO\View\NormalizedData\Views
+     * @var WPO\View\ND\Views
      */
     private $_viewsND = null;
     
     /**
      * 
-     * @var WPO\Option\NormalizedData\Values
+     * @var WPO\Option\ND\Values
      */
     private $_optionValuesND = null;
     
     /**
      * 
-     * @var WPO\Option\NormalizedData\Defaults
+     * @var WPO\Option\ND\Defaults
      */
     private $_optionDefaultsND = null;
     
@@ -152,8 +156,10 @@ class Plugin
          * -------------- Code below here is executed only once ------------------------
          */
         self::$_singletons[$identifier] = $this;
-        define('WPO_DIR', __DIR__);
-        define('WPO_PARENT_DIR', realpath(__DIR__ . '/..'));
+        if (!defined('WPO_DIR')) {
+            define('WPO_DIR', __DIR__);
+            define('WPO_PARENT_DIR', realpath(__DIR__ . '/..'));//both are defined sequentially so no need for double test
+        }
         
         /*
          * Either way we have the identifier now.
@@ -186,12 +192,12 @@ class Plugin
             if (isset($customizeArray[self::K_DEFAULT_PAGE_NAME])) {
                 $this->setDefaultPageName($customizeArray[self::K_DEFAULT_PAGE_NAME]);
             } else {
-                $this->setDefaultPageName(self::K_DEFAULT_PAGE_NAME);
+                $this->setDefaultPageName(self::DEFAULT_PAGE_NAME);
             }
             if (isset($customizeArray[self::K_DEFAULT_SECTION_NAME])) {
                 $this->setDefaultSectionName($customizeArray[self::K_DEFAULT_SECTION_NAME]);
             } else {
-                $this->setDefaultSectionName(self::K_DEFAULT_SECTION_NAME);
+                $this->setDefaultSectionName(self::DEFAULT_SECTION_NAME);
             }
             /*
              * All plugin values are now set even if not installed
@@ -200,8 +206,8 @@ class Plugin
         }
         
         /*
-         * Only init values, in construction because it will be faster than checking if null
-         * inside getOptionValuesNormalizedData every time its called
+         * Only init _values_ in construction because it will be faster than checking if null
+         * inside getOptionValuesND every time its called
          */
         require_once WPO_DIR . '/Option/ND/Loader/Values.php';
         $this->_optionValuesND = new \WPO\Option\ND\Loader\Values($this);
@@ -228,9 +234,9 @@ class Plugin
     /**
      * Moved here for the benefit of front end
      * 
-     * @return \WPO\View\NormalizedData\Views
+     * @return \WPO\View\ND\Views
      */
-    public function getViewsNormalizedData()
+    public function getViewsND()
     {
         if (null === $this->_viewsND) {
             require_once __DIR__ . '/View/ND/Loader/Views.php';
@@ -242,9 +248,9 @@ class Plugin
     /**
      * Moved to construction for the benefit of front end
      * 
-     * @return \WPO\Option\NormalizedData\Values
+     * @return \WPO\Option\ND\Values
      */
-    public function getOptionValuesNormalizedData()
+    public function getOptionValuesND()
     {
         return $this->_optionValuesND;
     }
@@ -252,9 +258,9 @@ class Plugin
     /**
      * Moved here for the benefit of front end
      * 
-     * @return \WPO\Option\NormalizedData\Defaults
+     * @return \WPO\Option\ND\Defaults
      */
-    public function getOptionDefaultsNormalizedData()
+    public function getOptionDefaultsND()
     {
         if (null === $this->_optionDefaultsND) {
             require_once __DIR__ . '/Option/ND/Loader/Defaults.php';
@@ -366,7 +372,7 @@ class Plugin
     }
     
     /**
-     * The directory iterator starts from crawling from here
+     * The directory iterator starts crawling from here
      *
      * @param string $path
      * @throws Exception

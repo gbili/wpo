@@ -36,13 +36,13 @@ extends \WPO\Map\AbstractMap
     }
     
     /**
+     * Too complicated should have stuck without any abstraction
      * 
      * @param array $taxonomies
      * @throws \Exception
      */
     public function getPath(array $taxonomies)
     {
-        require_once WPO_DIR . '/WriteOnce.php';
         return self::nestedOptionalParamsDynamicCall($this, parent::getOrderedTaxonomies(), $taxonomies, 'getPagePath', 'getSectionPath', 'getOptionPath');
     }
     
@@ -62,6 +62,9 @@ extends \WPO\Map\AbstractMap
     }
     
     /**
+     * Too complicated should have stuck without any abstraction
+     * It's not even reused anywhere
+     * 
      * nested params, means that there are a number n of params in $params
      * and each of which (lets call it p | p<n) depends on the p-1 param
      * when p=0 it does not depend on any other param.

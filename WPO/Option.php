@@ -77,25 +77,25 @@ class Option
     {
         if (null === $sectionOrOptOrNull) {
             $option  = $pageOrSecOrOpt;
-            $section = (null !== $sectionInUse)? $sectionInUse : Plugin::getDefaultSectionName();
-            $page    = (null !== $pageInUse)? $pageInUse : Plugin::getDefaultPageName();
+            $section = (null !== self::$_sectionInUse)? self::$_sectionInUse : Plugin::getDefaultSectionName();
+            $page    = (null !== self::$_pageInUse)? self::$_pageInUse : Plugin::getDefaultPageName();
         } else if (null === $optionOrNull) {
             $option  = $sectionOrOptOrNull;
             $section = $pageOrSecOrOpt;
-            $page    = (null !== $pageInUse)? $pageInUse : Plugin::getDefaultPageName();
+            $page    = (null !== self::$_pageInUse)? self::$_pageInUse : Plugin::getDefaultPageName();
         } else {
             $option  = $optionOrNull;
             $section = $sectionOrOptOrNull;
             $page    = $pageOrSecOrOpt;
         }
         
-        if (!isset(self::$_a[$page][$section][$option])) {
+        if (!isset(self::$_array[$page][$section][$option])) {
             throw new Exception(
                 "One of the following keys is not set p: $page, s:$section, o:$option in options array : " 
                 . print_r(self::$_array, true)
             );
         }
-        return self::$_a[$page][$section][$option];
+        return self::$_array[$page][$section][$option];
     }
     
     /**

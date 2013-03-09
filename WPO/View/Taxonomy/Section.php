@@ -1,8 +1,6 @@
 <?php
 namespace WPO\View\Taxonomy;
 
-use WPO\Option as Option;//option constants may be used in views;
-
 class Section
 {
     protected $_page;
@@ -42,10 +40,10 @@ class Section
         $this->_page = $page;
         $this->_section = $section;
         
-        $dO = $this->_plugin->getOptionDefaultsNormalizedData()->getOptions();
+        $dO = $this->_plugin->getOptionDefaultsND()->getOptions();
         $this->defaultPageOptions = $dO[$this->_page];
         
-        $this->_loader= $this->_plugin->getViewsNormalizedData();
+        $this->_loader= $this->_plugin->getViewsND();
         
         /*
          * Allow both variants, store as array and as object
@@ -56,7 +54,7 @@ class Section
         $this->object = json_decode($enc);
         
         //you can use _init() to narrow the scope of the current option
-        $this->optionsInUse = $plugin->getOptionValuesNormalizedData()->getOptions();
+        $this->optionsInUse = $plugin->getOptionValuesND()->getOptions();
         
         //require my view
         $sectionPaths = $this->_loader->getSections();
@@ -65,13 +63,18 @@ class Section
     
     public function renderOptions()
     {
+        foreach ($this->array as $option => $info) {
+            $this->renderOption($option);
+        }
+    }
+    
+    public function renderOption($option)
+    {
         require_once WPO_DIR . '/Map/AbstractMap.php';
         if (\WPO\Map\AbstractMap::TAXONOMY_OPTION !== $this->_loader->getHighestTaxonomyLevel()) {
             throw new \Exception('You cannot call renderOptions because there are no files for them.');
         }
         require_once __DIR__. '/Option.php';
-        foreach ($this->defaultPageOptions as $section => $options) {
-            new Option($this->_plugin, $this->_page, $this->_section, $option);
-        }
+        new Option($this->_plugin, $this->_page, $this->_section, $option);
     }
 }

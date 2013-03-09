@@ -1,0 +1,5 @@
+<select <?php echo ($this->isMultiple())? 'multiple="multiple"':'';?>>
+<?php foreach ($this->getOptions() as $option) :?>
+    <option><?php echo $option;?></option>
+<?php endforeach;?>
+</select>

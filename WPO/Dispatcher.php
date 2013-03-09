@@ -22,6 +22,14 @@ class Dispatcher
     const ACTION_INTEGRATE   = 'integrate';
     
     /**
+     * What separates the page name,
+     * and the plugin identifier, such
+     * that the page slug is unconfundable
+     * @var unknown_type
+     */
+    const PAGE_SLUG_SEP      = '_';
+    
+    /**
      * We should use :
      * __NAMESPACE__ . '\\Validator::' . $themeShortName
      * as reference for the validation callback (3rd param)
@@ -70,6 +78,29 @@ class Dispatcher
                 throw new Exception('You hooked an action that is not supported');
                 break; 
         }
+    }
+    
+    /**
+     * Many themes and plugins may be using wpo plugin,
+     * therefor it is important to keep pages uniquely
+     * identifiable. That is why we use the identifier.
+     * @todo the identifier should be added to the menu title, to avoid confusion (look Integrate)
+     * @param unknown_type $pluginIdentifier
+     * @param unknown_type $page
+     */
+    static public function getPageSlug($pluginIdentifier, $page)
+    {
+        return $pluginIdentifier . self::PAGE_SLUG_SEP . $page;
+    }
+    
+    /**
+     * Get meaningful parts from the page slug
+     * 
+     * @param unknown_type $pageSlug
+     */
+    static public function getPluginIdentifierAndPageName($pageSlug)
+    {
+        return explode(self::PAGE_SLUG_SEP, $pageSlug);
     }
     
     /**

@@ -88,6 +88,8 @@ abstract class AbstractTest
      */
     private $_mapInstance = null;
     
+    private $_testClassNameEndPart = null;
+    
     /**
      * 
      * @param string $testFilesInPath path to files to be tested
@@ -97,24 +99,33 @@ abstract class AbstractTest
     public function __construct($testFilesInPath, $mapsPath, $mapsNs)
     {
         $this->_testFilesInPath = $testFilesInPath;
+        //init testToMap array for this path
+        if (!isset(self::$_testToMap[$this->_testFilesInPath])) {
+            self::$_testToMap[$this->_testFilesInPath] = array();
+        }
+        $this->_testClassNameEndPart = end(explode('\\', get_class($this)));
         $this->_mapsPath = $mapsPath;
         $this->_mapsNs   = $mapsNs;
     }
     
     /**
-     * Creates an iterator, with regex spcified by subclass
-     * then the iterator tries to find a Map that matches
-     * the underlying organisation of files for the subclass.
+     * Creates an iterator to loop through files in path
+     * given a regex spcified by subclass.
+     * We test each file against available Maps wich will
+     * be rejected if they do not support the file.
+     * 
      * @throws Exception
-     * @return \WPO\Map\AbstractMap
+     * @return boolean found or not
      */
     public function findMap()
     {
         /*
-         * only try to find a map for a resource type once per script exec
+         * only try to find a map in some directory tree for a resource type once per script exec
          */
-        if (isset(self::$_testToMap[get_class($this)])) {
-            trigger_error("This test has already been done, testing again.. but why?", E_USER_NOTICE);
+        $alreadyTested = isset(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart]);
+        if ($alreadyTested) {
+            $oldMapClassNameEndPart = end(explode('\\', get_class(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart])));
+            trigger_error("This $this->_testClassNameEndPart's test has already been done in {$this->_testFilesInPath}. It has been found out that the supported map is : $oldMapClassNameEndPart. Testing again.. but why?", E_USER_NOTICE);
         }
 
         /*
@@ -126,7 +137,7 @@ abstract class AbstractTest
         
         //iterate through all files, and find a map that matches all files
         foreach ($iterator as $file) {
-                        if (!$this->fileMatchesSomeMap($file)) {
+            if (!$this->fileMatchesSomeMap($file)) {
                 require_once WPO_DIR . '/Map/Test/Exception.php';
                 throw new Exception(
                     "Your file structure does not fit any map. The file not matching the rest is: " . $file->getPathname()
@@ -136,11 +147,58 @@ abstract class AbstractTest
             $this->_interceptFile($iterator, $file);
         }
         
-        //let maps attempt to not support the file structure
-        //once all files have been checked and there will be no more
+        /*
+         * Only continue if there is some map that has matched.
+         * This test is needed cause dont want _announce... to
+         * throw exception, we want to return bool on not found
+         */
+        if (!$this->hasMatchingMap()) {
+            return false;
+        }
+        
+        /*
+         * Now the map doesn't know that there are no more files,
+         * announce that, and see if it still wants to support the file
+         * structure given that fact. (Some maps need a certain
+         * amount of files, so they could match all the files in
+         * a structure, but not support the structure in the end, 
+         * because theyv were written for a structure with more files...)
+         * 
+         * Think of it as sets.. :/ we have checked if the structure
+         * is a subset of the map's structure, and now we are checking
+         * for equality
+         */
         $this->_announceNoMoreFilesAndDropNotSupported();
         
-        return self::$_testToMap[get_class($this)] = $this->getMatchingMap();
+        /*
+         * The final check was made, did some map survive?
+         */
+        if (!$this->hasMatchingMap()) {
+            return false;
+        }
+        
+        /*
+         * If some map survived, store it statically
+         */
+        self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart] = $this->getMatchingMap();
+        
+        //in case it was already tested, did this test differ from the last?
+        if ($alreadyTested) {
+            $newMapClassNameEndPart = end(explode('\\', get_class(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart])));
+            $difference = ($oldMapClassNameEndPart !== $newMapClassNameEndPart)? "different : $newMapClassNameEndPart"  : 'the same';
+            trigger_error("The map is $difference!", E_USER_NOTICE);
+        }
+        return true;
+    }
+    
+    /**
+     * Have we already done a test of this type to find a map
+     * inside the current directory 
+     */
+    public function isAlreadyTested()
+    {
+        $this->_testClassNameEndPart = end(explode('\\', get_class($this)));
+        return isset(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart]);
     }
     
     /**
@@ -245,11 +303,14 @@ abstract class AbstractTest
     /**
      * Is there any map supporting all the paths that
      * have currently been tested?
+     * 
+     * added static check
+     * 
      * @return boolean
      */
     public function hasMatchingMaps()
     {
-        return !empty($this->_matchingMapClassNamesToMapInstances);
+        return !empty($this->_matchingMapClassNamesToMapInstances) || isset(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart]);
     }
     
     /**
@@ -268,7 +329,7 @@ abstract class AbstractTest
      */
     public function hasMatchingMap()
     {
-        return $this->hasMatchingMaps();
+        return 1 === count($this->_matchingMapClassNamesToMapInstances) || isset(self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart]);
     }
     
     /**
@@ -319,11 +380,20 @@ abstract class AbstractTest
     }
     
     /**
-     * proxy
+     * If no test was made already, do it and return the map
+     * If it was tested, just make sure some map was found and return it
+     * 
+     * @todo :/ before edition retur $this->getMatchingMap() but could not understand the workings of it so
+     * now it returns from static
+     * 
      */
     public function getMap()
     {
-        return $this->getMatchingMap();
+        if (!$this->isAlreadyTested()) {
+            $this->findMap();
+        }
+        $this->throwIfNoMaps();
+        return self::$_testToMap[$this->_testFilesInPath][$this->_testClassNameEndPart];//return $this->getMatchingMap();
     }
     
     /**

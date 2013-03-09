@@ -1,0 +1,15 @@
+<input id="<?php echo $this->id?>" 
+       name="<?php echo $this->name?>" 
+       placeholder="<?php echo $this->placeholder?>" 
+       <?php echo $this->autofocus?>>
+       <!-- //Remember to conditionally add the autofocus script if autofocus is required
+            //add this through wordpress hooks
+        <head>
+        <script>
+          $(document).ready(function() {
+            if (!("autofocus" in document.createElement("input"))) {
+              $("#<?php //echo $this->id?>").focus();
+            }
+          });
+        </script>
+        </head> -->
