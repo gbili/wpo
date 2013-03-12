@@ -1,1 +1,9 @@
-<?php
+<h4><?php echo $this->title;?></h4>
+<?php foreach ($this->data as $k => $v): ?>
+    <input type = "radio"
+           name = "<?php echo $v['id'];?>"
+           id = "<?php echo $v['value'];?>"
+           value = "<?php echo $v['value'];?>"
+           <?php echo ($this->current['value'] === $k)? 'checked = "checked"':'';?> />
+    <label for = "<?php echo $v['value'];?>"><?php echo $v['label'];?></label>
+<?php endforeach; ?>

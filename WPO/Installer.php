@@ -88,7 +88,7 @@ class Installer
          */
         if (!is_dir($adminPagesPath)) {
             echo "You have not created the admin pages dir, I'm creating it for you.";
-            self::createIntermediteDirectories($adminPagesPath);
+            self::createIntermediateDirectories($adminPagesPath);
             if (!is_dir($adminPagesPath)) {
                 require_once WPO_DIR . '/Exception.php';
                 throw new \WPO\Exception('Could not create the admin pages dir');
@@ -157,7 +157,7 @@ class Installer
      * Mkdir -p
      * @param string $path
      */
-    static public function createIntermediteDirectories($path)
+    static public function createIntermediateDirectories($path)
     {
         $pathParts = explode('/', $path);
         //does the path point to a file? ..because we only want to create the directories

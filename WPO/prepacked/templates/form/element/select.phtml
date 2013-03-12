@@ -1,5 +1,6 @@
-<select <?php echo ($this->isMultiple())? 'multiple="multiple"':'';?>>
-<?php foreach ($this->getOptions() as $option) :?>
-    <option><?php echo $option;?></option>
+<h4><?php echo $this->title;?></h4>
+<select <?php echo (isset($this->isMultiple))? 'multiple="multiple"':'';?>>
+<?php foreach ($this->data as $k => $v) :?>
+    <option value="<?php echo $v['value'];?>"><?php echo $v['value'];?></option>
 <?php endforeach;?>
 </select>

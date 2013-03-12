@@ -10,6 +10,8 @@ class Option
     protected $_loader;
     
     public $defaultPageOptions;
+    public $optionsInUse;
+    public $current;
     
     /**
      * Contains the option info as members of an object
@@ -56,7 +58,8 @@ class Option
         $this->object = json_decode($enc);
         
         //you can use _init() to narrow the scope of the current option
-        $this->optionsInUse = $plugin->getOptionValuesND()->getArray();
+        $this->optionsInUse = $plugin->getOptionValuesND()->getOptions();
+        $this->current = $this->optionsInUse[$this->_page][$this->_section][$this->_option];
         
         //require my view
         $optionPaths = $this->_loader->getOptions();

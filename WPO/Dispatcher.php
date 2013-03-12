@@ -58,12 +58,12 @@ class Dispatcher
         switch ($action) {
             case self::ACTION_RENDER;
                 require_once __DIR__ . '/View.php';
-                new View($plugin, $fnameParam);//fnameParam is page
+                new View($plugin, self::underscoreToSpace($fnameParam));//fnameParam is page
                 break;
                 
             case self::ACTION_VALIDATE;
                 require_once __DIR__ . '/Validate.php';
-                $a = new Validate($plugin, $fnameParam, $input);//fnameParam is page
+                $a = new Validate($plugin, $fnameParam, $input);//fnameParam is page @todo underscoreToSpace??
                 $output = $a->getValidated();
                 return apply_filters($pluginIdentifier . '_options_validate' , $output, $input, $defaults);
                 break;
@@ -81,6 +81,20 @@ class Dispatcher
     }
     
     /**
+     * 
+     * @param string $phrase
+     */
+    static public function spaceToUnderscore($phrase)
+    {
+    	return preg_replace('/[^a-zA-Z0-9_]/', '_', $phrase);
+    }
+    
+    static public function underscoreToSpace($phrase)
+    {
+        return preg_replace('/[^a-zA-Z0-9]/', ' ', $phrase);
+    }
+    
+    /**
      * Many themes and plugins may be using wpo plugin,
      * therefor it is important to keep pages uniquely
      * identifiable. That is why we use the identifier.
@@ -90,7 +104,7 @@ class Dispatcher
      */
     static public function getPageSlug($pluginIdentifier, $page)
     {
-        return $pluginIdentifier . self::PAGE_SLUG_SEP . $page;
+        return $pluginIdentifier . self::PAGE_SLUG_SEP . self::spaceToUnderscore($page);
     }
     
     /**
@@ -112,7 +126,7 @@ class Dispatcher
      */
     static public function getRenderCallback($pluginIdentifier, $page)
     {
-        return self::_getCallbackName($pluginIdentifier, array(self::ACTION_RENDER, $page));
+        return self::_getCallbackName($pluginIdentifier, array(self::ACTION_RENDER, self::spaceToUnderscore($page)));
     }
     
     /**
@@ -121,7 +135,7 @@ class Dispatcher
      */
     static public function getValidateCallback($pluginIdentifier, $page)
     {
-        return self::_getCallbackName($pluginIdentifier, array(self::ACTION_VALIDATE, $page));
+        return self::_getCallbackName($pluginIdentifier, array(self::ACTION_VALIDATE, self::spaceToUnderscore($page)));
     }
     
     /**

@@ -1,1 +1,8 @@
-<?php
+<h4><?php echo $this->title;?></h4>
+<?php foreach ($this->data as $k => $v): ?>
+    <input type = "checkbox"
+           id = "<?php echo $v['value'];?>"
+           value = "<?php echo $v['value'];?>"/>
+    <label for = "<?php echo $v['value'];?>"><?php echo $v['label'];?></label>
+    <?php echo $v['description'];?>
+<?php endforeach; ?>

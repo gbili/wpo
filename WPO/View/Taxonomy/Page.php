@@ -5,10 +5,25 @@ use WPO\Option as Option;//option constants may be used in views;
 
 class Page
 {
-    public $defaultPageOptions;
     protected $_page;
     protected $_loader;
     protected $_plugin;
+    
+    public $defaultPageOptions;
+    
+    /**
+     * Contains the option info as members of an object
+     *
+     * @var unknown_type
+     */
+    public $object;
+    
+    /**
+     * Contains option info as key vals of an array
+     *
+     * @var unknown_type
+     */
+    public $array;
     
     /**
      * 

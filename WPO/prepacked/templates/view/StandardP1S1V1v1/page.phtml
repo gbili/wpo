@@ -1,3 +1,8 @@
-<form class="form-horizontal">
-    <?php $this->renderSections()?>
-</form>
+<div class="wrap">
+    <?php screen_icon(); ?>
+    <h2><?php echo $this->_page;?></h2>
+    <form class="form-horizontal">
+        <?php $this->renderSections()?>
+        <?php submit_button();?>
+    </form>
+</div>

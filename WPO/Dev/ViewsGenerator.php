@@ -37,7 +37,9 @@ class ViewsGenerator
      * means : true === is_dir(WPO_DIR . VIEW_TEMPLATES_DIR_WPORELATIVE)
      * @var unknown_type
      */
-    const VIEW_TEMPLATES_DIR_WPORELATIVE = '/prepacked/templates/view';
+    const WPOREL_VIEW_TEMPLATES_DIR = '/prepacked/templates/view';
+    
+    const WPOREL_FORM_ELEM_TEMPLATES_DIR = '/prepacked/templates/form/element';
     
     /**
      *
@@ -149,7 +151,7 @@ class ViewsGenerator
      * Some view maps may not support some taxonomy level of view files
      *
      * @param array $data options array
-     * @param array $taxonomies
+     * @param array $taxonomies array('Page', 'Section', 'Option') on every recursion there is one less
      * @param array $keys
      */
     protected function _recursivelyCreateViewFiles(array $data, array $taxonomies, array $keys = array())
@@ -157,12 +159,12 @@ class ViewsGenerator
         //go one level deeper
         $taxonomy = array_shift($taxonomies);
         foreach ($data as $key => $values) {//closer to leaf...
-            //keys need to be stacked, we pass then to getPath
+            //keys need to be stacked, we pass them to getPath
             $keys[$taxonomy] = $key;
             if ($path = $this->_plugin->getAdminPagesPath() . $this->_viewMap->getPath($keys)) {
-                \WPO\Installer::createIntermediteDirectories($path);
+                \WPO\Installer::createIntermediateDirectories($path);
                 if (!file_exists($path) || true === $this->_overwrite) {
-                    file_put_contents($path, $this->_getViewFileContents($taxonomy));
+                    file_put_contents($path, $this->_getViewFileContents($taxonomy, ((isset($values[\WPO\Option::VIEW_TYPE]))? $values[\WPO\Option::VIEW_TYPE] : null)));
                 }
             }
             if (count($taxonomies) > 0) {
@@ -172,22 +174,40 @@ class ViewsGenerator
     }
     
     /**
+     * Get the map specific prepacked views for each taxonomy level.
+     * However when in option taxonomy, the user can specify to use
+     * a specific form element for the view. Try to get it or use
+     * the default map specific view.
      * 
-     * @param string $viewMapViewTempaltesDir where are the maps view templates stored
-     * @param string $taxonomy what is the taxonomy level of the view? option, page or section
+     * @param const $taxonomy for what taxonomy level is the view
+     * @param string $viewType file basename no suffix. Does the user want to use a prepacked form element?
+     * @throws \Exception
+     * @return string
      */
-    private function _getViewFileContents($taxonomy)
+    private function _getViewFileContents($taxonomy, $viewType=null)
     {
-        $viewMapViewTempaltesDir = WPO_DIR . self::VIEW_TEMPLATES_DIR_WPORELATIVE . '/'. $this->_viewMapBaseClassName;
-        if (!is_dir($viewMapViewTempaltesDir)) {
-            return '';//there are no default templates for this map type
+        //try to get the form element if user wants to
+        $viewPath = '';
+        if (null !== $viewType) {
+            $viewPath = WPO_DIR . self::WPOREL_FORM_ELEM_TEMPLATES_DIR . "/$viewType." . \WPO\Plugin::VIEW_SUFFIX;
         }
-        $viewTemplate = $viewMapViewTempaltesDir . '/' . strtolower($taxonomy) . '.' . \WPO\Plugin::VIEW_SUFFIX;
-        //@todo when the taxonomy is options, then we have to allow for further refinement of the view template
-        //for example when the option wants tu use a multicheck, load path/option_multicheck.phtml
-        if (!file_exists($viewTemplate)) {
-            throw new \Exception("Your map does not seem to have a view template for taxonomy: $taxonomy, create one as $viewTemplate");
+        
+        //Did not get the form element specified in viewType
+        if (!file_exists($viewPath)) {
+            $viewMapViewTempaltesDir = WPO_DIR . self::WPOREL_VIEW_TEMPLATES_DIR . '/'. $this->_viewMapBaseClassName;
+            if (!is_dir($viewMapViewTempaltesDir)) {
+                return '';//there are no default templates for this map type, return an empty string used as view content
+            }
+            
+            $viewPath = $viewMapViewTempaltesDir . '/' . strtolower($taxonomy) . '.' . \WPO\Plugin::VIEW_SUFFIX;
+            
+            if (!file_exists($viewPath)) {
+                throw new \Exception("Your map does not seem to have a view template for taxonomy: $taxonomy, create one as $viewPath");
+            }
         }
-        return file_get_contents($viewTemplate);
+        
+        return file_get_contents($viewPath);
     }
+    
+    
 }

@@ -39,6 +39,7 @@ class Option
     const VALUE                = 'value';
     const DEFAULT_VALUE        = 'defaultValue';
     const RENDERER             = 'renderer';//use function for rendering rather than view
+    const VIEW_TYPE            = 'viewType';
     
     const DATA_FOREIGN_REF     = 'dataForeignRef';
     const DFREF_SEPARATOR      = ':';

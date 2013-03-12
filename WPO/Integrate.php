@@ -51,6 +51,9 @@ class Integrate
     const DBK_META_WPOVERSION         = 'WPOVersion';
     const DBK_META_VIEWTAXONOMYLEVEL  = 'viewTaxonomyLevel';
     
+    const DBR_NOTICE_ERROR            = 'error';
+    const DBR_NOTICE_NOTICE           = 'notice';
+    
     /**
      * WPO__plugin_identifier|some_key:maybe_someOther:andSoOn
      * @var unknown_type
@@ -110,6 +113,12 @@ class Integrate
     
     /**
      * 
+     * @var unknown_type
+     */
+    private $_notices = array();
+    
+    /**
+     * 
      * @param string $pluginIdentifier
      */
     public function __construct($pluginIdentifier)
@@ -125,7 +134,7 @@ class Integrate
             $this->_init();
         }
         /*
-         * If not installed, plugin is in charge of installing itself (call Integrate::install($plugin)) once all plugin data is set
+         * If not installed, plugin is in charge of installing itself (with call to Integrate::install($plugin)) once all plugin data is set
          */
     }
     
@@ -200,6 +209,78 @@ class Integrate
         add_action('admin_init', \WPO\Dispatcher::getIntegrateCallback($this->_pluginIdentifier, 'registerOptions'));
         //@todo implement styles and scripts enqueueing. they should be located in each page's folder under styles.css scirpt.js or conversely under AdminPages/styles/pageName.js etc.
         //@todo implement options help, they should be located in each page's folder in help.phtml, resolve view .phtml discover conflict. Do the same for sidebar help
+    
+        //output notices
+        /*
+         * Hooks
+         */
+        //ask wordpress to output notices at some point
+        add_action('admin_notices', \WPO\Dispatcher::getIntegrateCallback($this->_pluginIdentifier, 'noticeBufferEndFlush'));
+    }
+    
+    /**
+     * Output all notices and errors to admin panel
+     * Called by wordpress on admin_notice action hook
+     */
+    public function noticeBufferEndFlush()
+    {
+        //NOTICES
+        $k = $this->getDbKey(self::DBR_NOTICE_NOTICE);
+        $notices = get_option($k, array());
+        
+        if (!empty($notices)) {
+            $this->notice($notices);
+        }
+        
+        delete_option($k);
+        
+        //ERRORS
+        $k = $this->getDbKey(self::DBR_NOTICE_ERROR);
+        $errors = get_option($k, array());
+        
+        if (!empty($errors)) {
+            $this->notice($notices, true);
+        }
+
+        delete_option($k);
+    }
+    
+    /**
+     * Echo notices and errors
+     * 
+     * @param array $messages
+     * @param bool $error
+     */
+    public function notice(array $messages, $error=false)
+    {
+        $out = '<div class="' . (($error)? 'error' : 'updated') . '">';
+        foreach ($messages as $msg) {
+            $out .= '<p>' . $this->_plugin->getName() . " : $msg </p>";
+        }
+        echo $out . "</div>";
+    }
+    
+    /**
+     * Add messages for later output, when wordpress asks
+     * the dispatcher to do so. The dispatcher will call
+     * Intergrate::noticeBufferEndFlush() and all notices
+     * of this plugin will be output.
+     * 
+     * @param mixed:array|string $messages messages to be output
+     * @param bool $error defines the type of notice 
+     */
+    public function addNotice($messages, $error=false)
+    {
+        if (!is_array($messages)){
+            $messages = array($messages);
+        }
+        
+        $type = ($error)? self::DBR_NOTICE_ERROR : self::DBR_NOTICE_NOTICE; 
+        $k = $this->getDbKey($type);
+       
+        $previousMessages = get_option($k, array());
+        $messages = array_merge($previousMessages, $messages);
+        update_option($k, $messages);
     }
     
     /**
@@ -226,7 +307,7 @@ class Integrate
                 $info[Option::PAGE_TITLE] . self::$_appendToPageTitle, //page title
                 $info[Option::PAGE_TITLE],                             //page title in menu
                 self::CAPABILITY_EDITTHEMEOPTIONS,                     //capability to view page
-                \WPO\Dispatcher::getPageSlug($this->_pluginIdentifier, $page),                                                 //slug in menu
+                \WPO\Dispatcher::getPageSlug($this->_pluginIdentifier, $page), //slug in menu
                 \WPO\Dispatcher::getRenderCallback($this->_pluginIdentifier, $page) //function wp must call for rendering
             );
         }
